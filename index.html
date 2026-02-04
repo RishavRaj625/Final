@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Codon Usage Tool</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+  <!-- Network Background -->
+  <canvas id="network-bg"></canvas>
+
+  <!-- Image Overlay -->
+  <div class="overlay" id="overlay"></div>
+  
+  <!-- Image Title -->
+  <div class="image-title" id="imageTitle"></div>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">.</div>
+    <div class="nav-icons">
+      <div class="nav-icon active" onclick="showPage('home')" title="Home">🏠</div>
+      <div class="nav-icon" onclick="showPage('metrics')" title="Metrics">📊</div>
+      <div class="nav-icon" onclick="showPage('proof')" title="Training Proof">📈</div>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <div class="container">
+
+    <!-- Page 1: Home - Hybrid Codon Recommendation System -->
+    <div id="home" class="page active">
+      <div class="page-title">Codon Usage Tool</div>
+      <div class="page-subtitle">[Default Optimize Page]</div>
+
+      <div class="form-group">
+        <label>Amino Acid (Single Letter):</label>
+        <input id="aa" placeholder="Example: L, K, F">
+      </div>
+
+      <div class="form-group">
+        <label>Codon (RNA format, optional):</label>
+        <input id="codon" placeholder="Example: UUA, UUU">
+      </div>
+
+      <div class="form-group">
+        <label>Target Host Species (optional):</label>
+        <input id="host" placeholder="Example: Escherichia coli">
+      </div>
+
+      <button onclick="analyze()">Analyze</button>
+
+      <div id="loading" style="display: none; text-align: center; margin-top: 20px; color: #d4af37;">
+        <p>Loading...</p>
+      </div>
+
+      <div id="error-message" style="display: none; text-align: center; margin-top: 20px; padding: 15px; background: rgba(255, 0, 0, 0.1); border: 1px solid #ff0000; border-radius: 10px; color: #ff6b6b;">
+      </div>
+
+      <div id="home-results" style="display: none;">
+
+        <div class="result-section">
+          <h3>Codon Ranking</h3>
+          <table id="rankingTable">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Codon</th>
+                <th>Frequency</th>
+                <th>ML Weight</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="result-section">
+          <h3 class="species-highlight">Top Species (Usage Based)</h3>
+          <ul id="species"></ul>
+        </div>
+
+        <!-- NEW: SPECIES SPECIFIC PREFERENCE -->
+        <div class="result-section">
+          <h3>Species-Specific Codon Preference</h3>
+          <div class="flex-container">
+            <div class="half-section">
+              <h4 class="subsection-title">High Preference Species</h4>
+              <ul id="speciesHigh" class="species-list"></ul>
+            </div>
+            <div class="half-section">
+              <h4 class="subsection-title">Low Preference Species</h4>
+              <ul id="speciesLow" class="species-list"></ul>
+            </div>
+          </div>
+          <div class="info-box" id="speciesExplain"></div>
+        </div>
+
+        <!-- NEW: HOST-AWARE OPTIMIZATION -->
+        <div class="result-section">
+          <h3>Host-Aware Codon Optimization</h3>
+          <div class="info-box" id="hostResult"></div>
+          <div id="hostRankingContainer" style="display: none; margin-top: 15px;">
+            <h4 class="subsection-title">Host-Specific Codon Ranking</h4>
+            <table id="hostRankingTable">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Codon</th>
+                  <th>Usage in Host</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- NEW: CODON BIAS SCORE -->
+        <div class="result-section">
+          <h3>Codon Bias Score</h3>
+          <div class="info-box" id="biasResult"></div>
+          <div id="biasTableContainer" style="display: none; margin-top: 15px;">
+            <table id="biasTable">
+              <thead>
+                <tr>
+                  <th>Species</th>
+                  <th>Bias Score</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- NEW: CROSS-KINGDOM COMPARISON -->
+        <div class="result-section">
+          <h3>Cross-Kingdom Codon Comparison</h3>
+          <div id="kingdomTableContainer">
+            <table id="kingdomTable">
+              <thead>
+                <tr>
+                  <th>Kingdom</th>
+                  <th>Average Usage</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="info-box" style="margin-top: 15px;">
+            <strong>Note:</strong> This comparison shows how codon usage varies across different kingdoms of life, revealing evolutionary preferences.
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Page 2: Metrics -->
+    <div id="metrics" class="page">
+      <div class="page-title">Model Performance Metrics</div>
+      <div class="page-subtitle">Accuracy Comparison & Evaluation</div>
+
+      <div class="result-section">
+        <h3>Accuracy Comparison</h3>
+        <table id="accuracyCompare">
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>Accuracy</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Codon Only</td>
+              <td id="accCodon">–</td>
+            </tr>
+            <tr>
+              <td>Codon + BWT</td>
+              <td id="accBWT">–</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="result-section">
+        <h3>Model Evaluation Metrics</h3>
+        <table id="metricsTable">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Top-1 Accuracy</td>
+              <td>–</td>
+            </tr>
+            <tr>
+              <td>Top-2 Accuracy</td>
+              <td>–</td>
+            </tr>
+            <tr>
+              <td>Top-3 Accuracy</td>
+              <td>–</td>
+            </tr>
+            <tr>
+              <td>Precision</td>
+              <td>–</td>
+            </tr>
+            <tr>
+              <td>Recall</td>
+              <td>–</td>
+            </tr>
+            <tr>
+              <td>F1 Score</td>
+              <td>–</td>
+            </tr>
+            <tr>
+              <td>Loss</td>
+              <td>–</td>
+            </tr>
+            <tr>
+              <td>Error</td>
+              <td>–</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="metric-note">
+          <strong>Note:</strong>
+          Top-1 accuracy reflects primary classification performance, while
+          Top-2 and Top-3 accuracies measure prediction robustness.
+          Error rate is computed as one minus Top-1 accuracy.
+        </div>
+      </div>
+
+      <div class="result-section">
+        <h3>Robustness Evaluation</h3>
+        <table id="robustnessTable">
+          <thead>
+            <tr>
+              <th>Data Condition</th>
+              <th>Accuracy</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Clean</td>
+              <td id="accClean">–</td>
+            </tr>
+            <tr>
+              <td>Noisy</td>
+              <td id="accNoisy">–</td>
+            </tr>
+            <tr>
+              <td>Missing</td>
+              <td id="accMissing">–</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Page 3: Training Proof -->
+    <div id="proof" class="page">
+      <div class="page-title">Training & Evaluation Proof</div>
+      <div class="page-subtitle">Model Training Visualizations</div>
+
+      <div class="result-section">
+        <div class="img-grid">
+          <img src="/static/Codon_BWT.png" alt="Codon BWT" onclick="expandImage(this)">
+          <img src="/static/BWT impact output.png" alt="BWT Impact" onclick="expandImage(this)">
+          <img src="/static/Confusion Matrix output.png" alt="Confusion Matrix" onclick="expandImage(this)">
+          <img src="/static/Feature Correlation Heatmap output.png" alt="Feature Correlation" onclick="expandImage(this)">
+          <img src="/static/Residual Dist output.png" alt="Residual Distribution" onclick="expandImage(this)">
+          <img src="/static/Residuals vs Predictions output.png" alt="Residuals vs Predictions" onclick="expandImage(this)">
+          <img src="/static/Test data metric output.png" alt="Test Data Metrics" onclick="expandImage(this)">
+          <img src="/static/Training vs test Acc output.png" alt="Training vs Test Accuracy" onclick="expandImage(this)">
+          <img src="/static/Training vs test loss output.png" alt="Training vs Test Loss" onclick="expandImage(this)">
+          <img src="/static/Recall_F1 Score.png" alt="Recall F1 Score" onclick="expandImage(this)">
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/static/script.js"></script>
+
+</body>
+
+</html>
