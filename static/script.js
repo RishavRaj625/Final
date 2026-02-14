@@ -179,9 +179,15 @@ function displayResults(data) {
     displayKingdomComparison(data.cross_kingdom_comparison);
   }
   
-  // 7. SHAP Explanation
+  // 7. SHAP Explanation (All three features)
   if (data.shap_explanation) {
     displayShapExplanation(data.shap_explanation);
+  }
+  if (data.bwt_importance) {
+    displayBwtImportance(data.bwt_importance);
+  }
+  if (data.model_comparison) {
+    displayModelComparison(data.model_comparison);
   }
 }
 
@@ -440,7 +446,7 @@ function displayShapExplanation(shap) {
   
   if (!shap || shap.length === 0) {
     chartDiv.innerHTML = '<p style="text-align:center;color:#888;">No SHAP data available</p>';
-    tbody.innerHTML = '<tr><td colspan="3">No data available</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4">No data available</td></tr>';
     return;
   }
   
@@ -455,15 +461,16 @@ function displayShapExplanation(shap) {
     barContainer.style.alignItems = "center";
     barContainer.style.gap = "12px";
     
-    const label = document.createElement("strong");
-    label.textContent = item.feature || item.codon || item.name || "Unknown";
-    label.style.minWidth = "60px";
-    label.style.color = "#d4af37";
-    label.style.fontSize = "16px";
+    const label = document.createElement("div");
+    label.innerHTML = `
+      <strong style="color:#d4af37;font-size:16px;">${item.feature}</strong><br>
+      <span style="color:#888;font-size:11px;">${item.type || 'Codon'}</span>
+    `;
+    label.style.minWidth = "100px";
     
     const barWrapper = document.createElement("div");
     barWrapper.style.flex = "1";
-    barWrapper.style.height = "30px";
+    barWrapper.style.height = "35px";
     barWrapper.style.background = "#1a1a1a";
     barWrapper.style.position = "relative";
     barWrapper.style.borderRadius = "5px";
@@ -478,9 +485,19 @@ function displayShapExplanation(shap) {
     const bar = document.createElement("div");
     bar.style.width = barWidth + "%";
     bar.style.height = "100%";
-    bar.style.background = impact > 0 ? 
-      "linear-gradient(90deg, #4CAF50, #66BB6A)" : 
-      "linear-gradient(90deg, #FF5252, #FF7961)";
+    
+    // Color based on type
+    const isBWT = (item.type || '').includes('BWT');
+    if (isBWT) {
+      bar.style.background = impact > 0 ? 
+        "linear-gradient(90deg, #9C27B0, #BA68C8)" :  // Purple for BWT
+        "linear-gradient(90deg, #E91E63, #F06292)";   // Pink for negative BWT
+    } else {
+      bar.style.background = impact > 0 ? 
+        "linear-gradient(90deg, #4CAF50, #66BB6A)" :  // Green for positive codon
+        "linear-gradient(90deg, #FF5252, #FF7961)";   // Red for negative codon
+    }
+    
     bar.style.transition = "width 0.5s ease";
     bar.style.boxShadow = impact > 0 ? 
       "0 0 10px rgba(76, 175, 80, 0.5)" : 
@@ -500,7 +517,7 @@ function displayShapExplanation(shap) {
     barContainer.appendChild(value);
     chartDiv.appendChild(barContainer);
     
-    // Add to table with interpretation
+    // Add to table with interpretation and type
     const tr = document.createElement("tr");
     
     // Highlight top influence
@@ -510,25 +527,23 @@ function displayShapExplanation(shap) {
     
     let interpretation = "";
     if (impact > 0) {
-      if (absImpact > 0.02) {
-        interpretation = "Strongly recommended";
-      } else if (absImpact > 0.01) {
-        interpretation = "Moderately recommended";
-      } else {
-        interpretation = "Slightly favored";
-      }
+      if (absImpact > 0.02) interpretation = "Strongly recommended";
+      else if (absImpact > 0.01) interpretation = "Moderately recommended";
+      else interpretation = "Slightly favored";
     } else {
-      if (absImpact > 0.02) {
-        interpretation = "Strongly discouraged";
-      } else if (absImpact > 0.01) {
-        interpretation = "Moderately discouraged";
-      } else {
-        interpretation = "Slightly disfavored";
-      }
+      if (absImpact > 0.02) interpretation = "Strongly discouraged";
+      else if (absImpact > 0.01) interpretation = "Moderately discouraged";
+      else interpretation = "Slightly disfavored";
     }
     
+    // Add badge for type
+    const typeBadge = isBWT ? 
+      '<span style="background:#9C27B0;padding:2px 6px;border-radius:3px;font-size:10px;margin-left:5px;">BWT</span>' : 
+      '<span style="background:#4CAF50;padding:2px 6px;border-radius:3px;font-size:10px;margin-left:5px;">Codon</span>';
+    
     tr.innerHTML = `
-      <td><strong>${item.feature || item.codon || "Unknown"}</strong></td>
+      <td><strong>${item.feature}</strong></td>
+      <td>${item.type || 'Codon'}${typeBadge}</td>
       <td style="color: ${impact > 0 ? '#4CAF50' : '#FF5252'}; font-weight: bold;">
         ${impact > 0 ? '+' : ''}${impact.toFixed(4)}
       </td>
@@ -600,6 +615,232 @@ function updateMetricsPage(metrics) {
   if (accMissing && metrics.accuracy_missing !== undefined) {
     accMissing.textContent = (metrics.accuracy_missing * 100).toFixed(2) + "%";
   }
+}
+
+// ============= BWT IMPORTANCE DISPLAY =============
+
+function displayBwtImportance(bwtData) {
+  const chartDiv = document.getElementById("bwtChart");
+  const tbody = document.querySelector("#bwtTable tbody");
+  
+  if (!chartDiv || !tbody) return;
+  
+  chartDiv.innerHTML = "";
+  tbody.innerHTML = "";
+  
+  if (!bwtData || bwtData.length === 0) {
+    chartDiv.innerHTML = '<p style="text-align:center;color:#888;">No BWT importance data available</p>';
+    tbody.innerHTML = '<tr><td colspan="3">No data available</td></tr>';
+    return;
+  }
+  
+  // Create horizontal bar chart
+  bwtData.forEach((item, index) => {
+    const barContainer = document.createElement("div");
+    barContainer.style.margin = "10px 0";
+    barContainer.style.display = "flex";
+    barContainer.style.alignItems = "center";
+    barContainer.style.gap = "12px";
+    
+    const label = document.createElement("strong");
+    label.textContent = item.feature;
+    label.style.minWidth = "150px";
+    label.style.color = "#9C27B0";
+    label.style.fontSize = "14px";
+    
+    const barWrapper = document.createElement("div");
+    barWrapper.style.flex = "1";
+    barWrapper.style.height = "28px";
+    barWrapper.style.background = "#1a1a1a";
+    barWrapper.style.position = "relative";
+    barWrapper.style.borderRadius = "5px";
+    barWrapper.style.overflow = "hidden";
+    barWrapper.style.border = "1px solid #333";
+    
+    const importance = item.importance || 0;
+    const maxImportance = Math.max(...bwtData.map(b => b.importance || 0));
+    const barWidth = maxImportance > 0 ? (importance / maxImportance * 100) : 0;
+    
+    const bar = document.createElement("div");
+    bar.style.width = barWidth + "%";
+    bar.style.height = "100%";
+    bar.style.background = "linear-gradient(90deg, #9C27B0, #BA68C8)";
+    bar.style.transition = "width 0.5s ease";
+    bar.style.boxShadow = "0 0 10px rgba(156, 39, 176, 0.5)";
+    
+    const value = document.createElement("span");
+    value.textContent = importance.toFixed(4);
+    value.style.marginLeft = "10px";
+    value.style.color = "#9C27B0";
+    value.style.fontWeight = "bold";
+    value.style.minWidth = "70px";
+    value.style.fontSize = "13px";
+    
+    barWrapper.appendChild(bar);
+    barContainer.appendChild(label);
+    barContainer.appendChild(barWrapper);
+    barContainer.appendChild(value);
+    chartDiv.appendChild(barContainer);
+    
+    // Add to table
+    const tr = document.createElement("tr");
+    
+    // Highlight top BWT feature
+    if (index === 0) {
+      tr.classList.add("highlight");
+    }
+    
+    tr.innerHTML = `
+      <td><strong>${item.feature}</strong></td>
+      <td style="color:#9C27B0;font-weight:bold;">${importance.toFixed(4)}</td>
+      <td style="color:#ccc;">${item.impact || 'Medium'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ============= MODEL COMPARISON DISPLAY =============
+
+function displayModelComparison(compData) {
+  const chartDiv = document.getElementById("comparisonChart");
+  const tbody = document.querySelector("#comparisonTable tbody");
+  
+  if (!chartDiv || !tbody) return;
+  
+  chartDiv.innerHTML = "";
+  tbody.innerHTML = "";
+  
+  if (!compData || compData.length === 0) {
+    chartDiv.innerHTML = '<p style="text-align:center;color:#888;">No comparison data available</p>';
+    tbody.innerHTML = '<tr><td colspan="4">No data available</td></tr>';
+    return;
+  }
+  
+  // Create comparison chart
+  compData.forEach((item, index) => {
+    const container = document.createElement("div");
+    container.style.margin = "15px 0";
+    container.style.padding = "12px";
+    container.style.background = "rgba(255,255,255,0.02)";
+    container.style.borderRadius = "8px";
+    container.style.border = "1px solid #333";
+    
+    // Codon label
+    const codonLabel = document.createElement("div");
+    codonLabel.innerHTML = `<strong style="color:#d4af37;font-size:16px;">${item.codon}</strong>`;
+    codonLabel.style.marginBottom = "8px";
+    container.appendChild(codonLabel);
+    
+    // Two bars side by side
+    const barsContainer = document.createElement("div");
+    barsContainer.style.display = "flex";
+    barsContainer.style.gap = "10px";
+    barsContainer.style.alignItems = "center";
+    
+    // Codon-only bar
+    const codonBar = createComparisonBar(
+      "Codon-Only", 
+      item.codon_only, 
+      "#4CAF50",
+      Math.max(...compData.map(c => Math.abs(c.codon_only)))
+    );
+    
+    // Codon+BWT bar
+    const bwtBar = createComparisonBar(
+      "Codon+BWT", 
+      item.codon_bwt, 
+      "#2196F3",
+      Math.max(...compData.map(c => Math.abs(c.codon_bwt)))
+    );
+    
+    barsContainer.appendChild(codonBar);
+    barsContainer.appendChild(bwtBar);
+    container.appendChild(barsContainer);
+    
+    // BWT contribution indicator
+    const contribution = document.createElement("div");
+    const bwtContrib = item.bwt_contribution;
+    const isImprovement = bwtContrib > 0;
+    contribution.innerHTML = `
+      <span style="color:#888;font-size:12px;">BWT Contribution: </span>
+      <span style="color:${isImprovement ? '#4CAF50' : '#FF5252'};font-weight:bold;">
+        ${bwtContrib > 0 ? '+' : ''}${bwtContrib.toFixed(4)} 
+        ${isImprovement ? '↑' : '↓'}
+      </span>
+    `;
+    contribution.style.marginTop = "6px";
+    contribution.style.fontSize = "12px";
+    container.appendChild(contribution);
+    
+    chartDiv.appendChild(container);
+    
+    // Add to table
+    const tr = document.createElement("tr");
+    
+    // Highlight top improvement
+    if (index === 0) {
+      tr.classList.add("highlight");
+    }
+    
+    const improvement = ((item.codon_bwt - item.codon_only) / Math.abs(item.codon_only) * 100);
+    
+    tr.innerHTML = `
+      <td><strong>${item.codon}</strong></td>
+      <td style="color:#4CAF50;font-weight:bold;">${item.codon_only > 0 ? '+' : ''}${item.codon_only.toFixed(4)}</td>
+      <td style="color:#2196F3;font-weight:bold;">${item.codon_bwt > 0 ? '+' : ''}${item.codon_bwt.toFixed(4)}</td>
+      <td style="color:${item.bwt_contribution > 0 ? '#4CAF50' : '#FF5252'};font-weight:bold;">
+        ${item.bwt_contribution > 0 ? '+' : ''}${item.bwt_contribution.toFixed(4)} 
+        (${improvement > 0 ? '+' : ''}${improvement.toFixed(1)}%)
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// Helper function for comparison bars
+function createComparisonBar(label, value, color, maxValue) {
+  const container = document.createElement("div");
+  container.style.flex = "1";
+  
+  const labelDiv = document.createElement("div");
+  labelDiv.textContent = label;
+  labelDiv.style.fontSize = "11px";
+  labelDiv.style.color = "#888";
+  labelDiv.style.marginBottom = "4px";
+  
+  const barWrapper = document.createElement("div");
+  barWrapper.style.height = "22px";
+  barWrapper.style.background = "#1a1a1a";
+  barWrapper.style.borderRadius = "4px";
+  barWrapper.style.overflow = "hidden";
+  barWrapper.style.border = "1px solid #333";
+  barWrapper.style.position = "relative";
+  
+  const absValue = Math.abs(value);
+  const barWidth = maxValue > 0 ? (absValue / maxValue * 100) : 0;
+  
+  const bar = document.createElement("div");
+  bar.style.width = barWidth + "%";
+  bar.style.height = "100%";
+  bar.style.background = color;
+  bar.style.transition = "width 0.5s ease";
+  
+  const valueLabel = document.createElement("span");
+  valueLabel.textContent = `${value > 0 ? '+' : ''}${value.toFixed(4)}`;
+  valueLabel.style.position = "absolute";
+  valueLabel.style.right = "5px";
+  valueLabel.style.top = "50%";
+  valueLabel.style.transform = "translateY(-50%)";
+  valueLabel.style.color = color;
+  valueLabel.style.fontWeight = "bold";
+  valueLabel.style.fontSize = "11px";
+  
+  barWrapper.appendChild(bar);
+  barWrapper.appendChild(valueLabel);
+  container.appendChild(labelDiv);
+  container.appendChild(barWrapper);
+  
+  return container;
 }
 
 // ============= KEYBOARD SUPPORT =============

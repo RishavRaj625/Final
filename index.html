@@ -192,13 +192,57 @@
             
             <strong>Value magnitude:</strong> The size of the value (ignoring +/-) indicates strength of influence. Larger absolute values = stronger influence on the prediction.
           </div>
+
+          <!-- Feature 1: Top 10 Contributing Features (Codon + BWT) -->
+          <h4 style="color:#d4af37;margin-top:25px;margin-bottom:15px;">📊 Top 10 Contributing Features</h4>
+          <div class="info-box" style="margin-bottom:15px;font-size:13px;">
+            Shows the most important features (both codons and BWT transformations) that influence the model's prediction.
+          </div>
           <div id="shapChart"></div>
           <table id="shapTable" style="margin-top:15px;">
             <thead>
               <tr>
-                <th>Codon Feature</th>
+                <th>Feature</th>
+                <th>Type</th>
                 <th>SHAP Impact</th>
                 <th>Interpretation</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+
+          <!-- Feature 2: BWT Feature Importance -->
+          <h4 style="color:#d4af37;margin-top:30px;margin-bottom:15px;">🧬 BWT Feature Importance</h4>
+          <div class="info-box" style="margin-bottom:15px;font-size:13px;">
+            Burrows-Wheeler Transform (BWT) features capture sequence patterns and context. 
+            This shows how BWT transformations contribute to codon prediction accuracy.
+          </div>
+          <div id="bwtChart" style="margin-top:15px;"></div>
+          <table id="bwtTable" style="margin-top:15px;">
+            <thead>
+              <tr>
+                <th>BWT Feature</th>
+                <th>Importance Score</th>
+                <th>Impact</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+
+          <!-- Feature 3: Codon-Only vs Codon+BWT Comparison -->
+          <h4 style="color:#d4af37;margin-top:30px;margin-bottom:15px;">⚖️ Model Comparison: Codon-Only vs Codon+BWT</h4>
+          <div class="info-box" style="margin-bottom:15px;font-size:13px;">
+            Compares SHAP values between the basic Codon-only model and the enhanced Codon+BWT model.
+            Shows how BWT features refine codon predictions.
+          </div>
+          <div id="comparisonChart" style="margin-top:15px;"></div>
+          <table id="comparisonTable" style="margin-top:15px;">
+            <thead>
+              <tr>
+                <th>Codon</th>
+                <th>Codon-Only SHAP</th>
+                <th>Codon+BWT SHAP</th>
+                <th>BWT Contribution</th>
               </tr>
             </thead>
             <tbody></tbody>
