@@ -38,6 +38,7 @@ body {
   font-size: 36px;
   font-weight: bold;
   letter-spacing: 2px;
+  color: transparent;
 }
 
 .nav-icons {
@@ -188,7 +189,7 @@ button:active {
   text-align: center;
 }
 
-/* Flex Container for Species Preference */
+/* NEW: Flex Container for Species Preference */
 .flex-container {
   display: flex;
   gap: 20px;
@@ -213,7 +214,7 @@ button:active {
   font-weight: bold;
 }
 
-/* Info Box Styling */
+/* NEW: Info Box Styling */
 .info-box {
   background: rgba(15, 27, 32, 0.6);
   border-left: 4px solid #d4af37;
@@ -229,7 +230,7 @@ button:active {
   color: #d4af37;
 }
 
-/* Species List with Badges */
+/* NEW: Species List with Badges */
 .species-list {
   list-style: none;
   padding: 0;
@@ -261,17 +262,6 @@ button:active {
   font-size: 11px;
   font-weight: bold;
   white-space: nowrap;
-}
-
-/* SHAP-specific badges */
-.badge.positive-effect {
-  background: rgba(75, 192, 75, 0.8);
-  color: #fff;
-}
-
-.badge.negative-effect {
-  background: rgba(255, 99, 99, 0.8);
-  color: #fff;
 }
 
 /* Tables */
@@ -317,17 +307,6 @@ td {
   font-weight: bold;
 }
 
-/* SHAP table effects */
-td.positive-effect {
-  color: rgb(75, 192, 75);
-  font-weight: bold;
-}
-
-td.negative-effect {
-  color: rgb(255, 99, 99);
-  font-weight: bold;
-}
-
 /* Species List */
 .species-highlight {
   color: #d4af37;
@@ -357,12 +336,6 @@ ul li.top-species {
   font-weight: bold;
   color: #d4af37;
   box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
-}
-
-/* Canvas/Chart Container */
-canvas {
-  max-width: 100%;
-  height: auto !important;
 }
 
 /* Image Grid */
@@ -468,32 +441,6 @@ canvas {
   line-height: 1.5;
 }
 
-/* SHAP Page Specific Styling */
-#shap-results h4 {
-  color: #d4af37;
-  font-size: 16px;
-  margin-top: 20px;
-  margin-bottom: 10px;
-}
-
-#shap-interpretation {
-  font-size: 15px;
-  line-height: 1.8;
-}
-
-/* Loading Spinner */
-#loading::after {
-  content: "⏳";
-  animation: spin 2s linear infinite;
-  display: inline-block;
-  margin-left: 10px;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
 /* Tablet Responsive */
 @media (min-width: 481px) and (max-width: 768px) {
   .header {
@@ -557,13 +504,13 @@ canvas {
   .nav-icons {
     order: 1;
     justify-content: center;
-    gap: 10px;
+    gap: 12px;
   }
 
   .nav-icon {
-    width: 42px;
-    height: 42px;
-    font-size: 18px;
+    width: 45px;
+    height: 45px;
+    font-size: 20px;
   }
 
   .container {
@@ -674,10 +621,6 @@ canvas {
     font-size: 11px;
     padding: 10px;
   }
-
-  canvas {
-    height: 300px !important;
-  }
 }
 
 /* Landscape Mobile */
@@ -698,10 +641,6 @@ canvas {
     top: 2%;
     font-size: 13px;
     padding: 8px 18px;
-  }
-
-  canvas {
-    height: 250px !important;
   }
 }
 
@@ -731,9 +670,5 @@ canvas {
 
   .half-section {
     min-width: 320px;
-  }
-
-  canvas {
-    height: 400px !important;
   }
 }

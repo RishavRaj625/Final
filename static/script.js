@@ -1,628 +1,670 @@
-// Network Background Animation
-const canvas = document.getElementById('network-bg');
-const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+// ============= UTILITY FUNCTIONS =============
 
-const particles = [];
-const particleCount = window.innerWidth < 768 ? 40 : 80;
-
-class Particle {
-  constructor() {
-    this.x = Math.random() * canvas.width;
-    this.y = Math.random() * canvas.height;
-    this.vx = (Math.random() - 0.5) * 0.5;
-    this.vy = (Math.random() - 0.5) * 0.5;
-    this.radius = Math.random() * 2 + 1;
-  }
-
-  update() {
-    this.x += this.vx;
-    this.y += this.vy;
-
-    if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
-    if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
-  }
-
-  draw() {
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(212, 175, 55, 0.5)';
-    ctx.fill();
-  }
+function showError(message) {
+  const errorDiv = document.getElementById("error-message");
+  errorDiv.textContent = message;
+  errorDiv.style.display = "block";
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("home-results").style.display = "none";
 }
 
-for (let i = 0; i < particleCount; i++) {
-  particles.push(new Particle());
+function hideError() {
+  document.getElementById("error-message").style.display = "none";
 }
 
-function animate() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  particles.forEach(p => {
-    p.update();
-    p.draw();
-  });
-
-  // Draw connections
-  particles.forEach((p1, i) => {
-    particles.slice(i + 1).forEach(p2 => {
-      const dx = p1.x - p2.x;
-      const dy = p1.y - p2.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist < 150) {
-        ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.strokeStyle = `rgba(212, 175, 55, ${0.2 * (1 - dist / 150)})`;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      }
-    });
-  });
-
-  requestAnimationFrame(animate);
+function showLoading() {
+  document.getElementById("loading").style.display = "block";
+  hideError();
 }
 
-animate();
+function hideLoading() {
+  document.getElementById("loading").style.display = "none";
+}
 
-window.addEventListener('resize', () => {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-});
+// ============= PAGE NAVIGATION =============
 
-// Global variable to store current SHAP data
-let currentShapData = null;
-let currentCodon = null;
-let currentHost = null;
-
-// Chart instances (for cleanup)
-let shapBarChartInstance = null;
-let waterfallChartInstance = null;
-let globalImportanceChartInstance = null;
-
-// Navigation
-function showPage(pageId) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-icon').forEach(n => n.classList.remove('active'));
+function showPage(pageName) {
+  // Hide all pages
+  const pages = document.querySelectorAll('.page');
+  pages.forEach(page => page.classList.remove('active'));
   
-  document.getElementById(pageId).classList.add('active');
-  event.target.closest('.nav-icon').classList.add('active');
+  // Deactivate all nav icons
+  const navIcons = document.querySelectorAll('.nav-icon');
+  navIcons.forEach(icon => icon.classList.remove('active'));
   
-  // If switching to SHAP page, display current SHAP data if available
-  if (pageId === 'shap' && currentShapData) {
-    displayShapExplanation(currentShapData);
+  // Show selected page
+  const selectedPage = document.getElementById(pageName);
+  if (selectedPage) {
+    selectedPage.classList.add('active');
+  }
+  
+  // Activate selected nav icon
+  const activeIcon = document.querySelector(`[onclick="showPage('${pageName}')"]`);
+  if (activeIcon) {
+    activeIcon.classList.add('active');
   }
 }
 
-// Image Expansion
-let expandedImage = null;
-const overlay = document.getElementById('overlay');
-const imageTitle = document.getElementById('imageTitle');
+// ============= IMAGE EXPANSION =============
 
 function expandImage(img) {
-  if (expandedImage && expandedImage !== img) {
-    expandedImage.classList.remove('expanded');
-  }
-
-  if (img.classList.contains('expanded')) {
-    img.classList.remove('expanded');
-    overlay.classList.remove('active');
-    imageTitle.classList.remove('active');
-    expandedImage = null;
+  const overlay = document.getElementById("overlay");
+  const imageTitle = document.getElementById("imageTitle");
+  
+  if (img.classList.contains("expanded")) {
+    // Collapse image
+    img.classList.remove("expanded");
+    overlay.classList.remove("active");
+    imageTitle.classList.remove("active");
+    imageTitle.textContent = "";
   } else {
-    img.classList.add('expanded');
-    overlay.classList.add('active');
-    imageTitle.textContent = img.alt;
-    imageTitle.classList.add('active');
-    expandedImage = img;
+    // Collapse any other expanded images first
+    document.querySelectorAll(".img-grid img.expanded").forEach(i => {
+      i.classList.remove("expanded");
+    });
+    
+    // Expand this image
+    img.classList.add("expanded");
+    overlay.classList.add("active");
+    
+    // Set image title
+    const altText = img.getAttribute("alt") || "Image";
+    imageTitle.textContent = altText;
+    imageTitle.classList.add("active");
   }
 }
 
-overlay.addEventListener('click', () => {
-  if (expandedImage) {
-    expandedImage.classList.remove('expanded');
-    overlay.classList.remove('active');
-    imageTitle.classList.remove('active');
-    expandedImage = null;
+// Close expanded image when clicking overlay
+document.addEventListener('DOMContentLoaded', function() {
+  const overlay = document.getElementById("overlay");
+  if (overlay) {
+    overlay.addEventListener('click', function() {
+      document.querySelectorAll(".img-grid img.expanded").forEach(img => {
+        img.classList.remove("expanded");
+      });
+      overlay.classList.remove("active");
+      const imageTitle = document.getElementById("imageTitle");
+      if (imageTitle) {
+        imageTitle.classList.remove("active");
+        imageTitle.textContent = "";
+      }
+    });
   }
 });
 
-// Analyze Function
+// ============= MAIN ANALYSIS FUNCTION =============
+
 async function analyze() {
+  // Get input values
   const aa = document.getElementById("aa").value.trim().toUpperCase();
   const codon = document.getElementById("codon").value.trim().toUpperCase();
   const host = document.getElementById("host").value.trim();
-
-  // Store current inputs
-  currentCodon = codon;
-  currentHost = host;
-
-  // Show loading
-  document.getElementById('loading').style.display = 'block';
-  document.getElementById('error-message').style.display = 'none';
-  document.getElementById('home-results').style.display = 'none';
-
-  try {
-    const res = await fetch("/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amino_acid: aa, codon: codon, host_species: host })
-    });
-
-    if (!res.ok) {
-      throw new Error(`Server error: ${res.status} ${res.statusText}`);
-    }
-
-    const data = await res.json();
-    
-    // Hide loading
-    document.getElementById('loading').style.display = 'none';
-    
-    if (data.error) {
-      document.getElementById('error-message').textContent = data.error;
-      document.getElementById('error-message').style.display = 'block';
-      return;
-    }
-
-    // Store SHAP data globally
-    currentShapData = data.shap_explanation;
-
-    // Show results
-    document.getElementById('home-results').style.display = 'block';
-
-    // Codon ranking
-    let rHTML = '';
-    data.codon_ranking.forEach(r => {
-      rHTML += `<tr class="${r.codon === codon ? 'highlight' : ''}">
-        <td>${r.rank}</td><td>${r.codon}</td>
-        <td>${r.frequency.toFixed(4)}</td>
-        <td>${r.ml_weight.toFixed(2)}</td></tr>`;
-    });
-    document.querySelector("#rankingTable tbody").innerHTML = rHTML;
-
-    // Top species
-    document.getElementById("species").innerHTML =
-      data.top_species.map((s, index) =>
-        `<li class="${index === 0 ? 'top-species' : ''}">${s.SPECIESNAME} — ${s.SCORE.toFixed(4)}</li>`
-      ).join("");
-
-    // Species-specific analysis
-    if (data.species_specific_analysis) {
-      document.getElementById("speciesHigh").innerHTML =
-        data.species_specific_analysis.top_species.map(s =>
-          `<li>${s.SPECIESNAME} <span class="badge">${(s.PREFERENCE_SCORE * 100).toFixed(1)}%</span></li>`
-        ).join("");
-
-      document.getElementById("speciesLow").innerHTML =
-        data.species_specific_analysis.bottom_species.map(s =>
-          `<li>${s.SPECIESNAME} <span class="badge">${(s.PREFERENCE_SCORE * 100).toFixed(1)}%</span></li>`
-        ).join("");
-
-      document.getElementById("speciesExplain").innerHTML =
-        `<strong>Analysis:</strong> ${data.species_specific_analysis.explanation}`;
-    }
-
-    // Host-aware optimization
-    const hostResultDiv = document.getElementById("hostResult");
-    const hostRankingContainer = document.getElementById('hostRankingContainer');
-    
-    if (data.host_aware_optimization) {
-      const hostOpt = data.host_aware_optimization;
-      hostResultDiv.innerHTML =
-        `<strong>Optimal codon for ${hostOpt.host_species}:</strong> 
-         <span style="color: #d4af37; font-size: 16px; font-weight: bold;">${hostOpt.optimal_codon}</span>
-         <br><br>This codon shows the highest usage frequency in the selected host organism.`;
-
-      if (hostOpt.codon_ranking && hostOpt.codon_ranking.length > 0) {
-        hostRankingContainer.style.display = 'block';
-        let hostRankHTML = '';
-        hostOpt.codon_ranking.forEach(([codon, usage], index) => {
-          hostRankHTML += `<tr class="${index === 0 ? 'highlight' : ''}">
-            <td>${index + 1}</td>
-            <td>${codon}</td>
-            <td>${usage.toFixed(4)}</td>
-          </tr>`;
-        });
-        document.querySelector("#hostRankingTable tbody").innerHTML = hostRankHTML;
-      } else {
-        hostRankingContainer.style.display = 'none';
-      }
-    } else {
-      hostResultDiv.innerHTML =
-        `<strong>No host species selected.</strong><br>
-         Enter a host species name (e.g., "Escherichia coli") in the input field above to see optimized codon recommendations for that organism.`;
-      hostRankingContainer.style.display = 'none';
-    }
-
-    // Metrics
-    document.getElementById("accCodon").innerText =
-      (data.model_metrics.accuracy_codon_only * 100).toFixed(2) + "%";
-    document.getElementById("accBWT").innerText =
-      (data.model_metrics.accuracy_codon_bwt * 100).toFixed(2) + "%";
-
-    const m = data.model_metrics;
-    const rows = document.querySelectorAll("#metricsTable tbody tr td:nth-child(2)");
-    rows[0].innerText = m.top1_accuracy.toFixed(4);
-    rows[1].innerText = (m.top2_accuracy ?? 0).toFixed(4);
-    rows[2].innerText = m.top3_accuracy.toFixed(4);
-    rows[3].innerText = m.precision.toFixed(4);
-    rows[4].innerText = m.recall.toFixed(4);
-    rows[5].innerText = m.f1_score.toFixed(4);
-    rows[6].innerText = m.loss.toFixed(4);
-    rows[7].innerText = (1 - m.top1_accuracy).toFixed(4);
-
-    document.getElementById("accClean").innerText =
-      (m.accuracy_clean * 100).toFixed(2) + "%";
-    document.getElementById("accNoisy").innerText =
-      (m.accuracy_noisy * 100).toFixed(2) + "%";
-    document.getElementById("accMissing").innerText =
-      (m.accuracy_missing * 100).toFixed(2) + "%";
-    
-  } catch (error) {
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('error-message').textContent = 
-      `Error: ${error.message}. Make sure Flask server is running on the correct port.`;
-    document.getElementById('error-message').style.display = 'block';
-    console.error('Fetch error:', error);
-  }
-}
-
-// Display SHAP Explanation
-function displayShapExplanation(shapData) {
-  if (!shapData) {
-    document.getElementById('shap-results').style.display = 'none';
-    document.getElementById('no-shap-data').style.display = 'block';
+  
+  // Validate input
+  if (!aa) {
+    showError("Please enter an amino acid (single letter code)");
     return;
   }
-
-  document.getElementById('shap-results').style.display = 'block';
-  document.getElementById('no-shap-data').style.display = 'none';
-
-  // Summary
-  const summary = `
-    <strong>Codon:</strong> ${shapData.codon}<br>
-    <strong>Base Value (Average):</strong> ${shapData.base_value.toFixed(4)}<br>
-    <strong>Prediction:</strong> ${shapData.prediction.toFixed(4)}<br>
-    <strong>Total Effect:</strong> ${shapData.total_effect > 0 ? '+' : ''}${shapData.total_effect.toFixed(4)}
-    ${currentHost ? `<br><strong>Context:</strong> ${currentHost}` : '<br><strong>Context:</strong> Global'}
-  `;
-  document.getElementById('shap-summary').innerHTML = summary;
-
-  // Top Features Table
-  let featuresHTML = '';
-  shapData.top_features.forEach((f, index) => {
-    const effectClass = f.effect === 'positive' ? 'positive-effect' : 'negative-effect';
-    featuresHTML += `<tr>
-      <td>${index + 1}</td>
-      <td><strong>${f.feature}</strong></td>
-      <td class="${effectClass}">${f.shap_value.toFixed(6)}</td>
-      <td><span class="badge ${effectClass}">${f.effect}</span></td>
-      <td>${f.percentage}%</td>
-    </tr>`;
-  });
-  document.querySelector("#shapFeaturesTable tbody").innerHTML = featuresHTML;
-
-  // Create SHAP Bar Chart
-  createShapBarChart(shapData.top_features);
-
-  // Create Waterfall Chart
-  createWaterfallChart(shapData);
-
-  // Display Interactions if available
-  if (shapData.interactions && shapData.interactions.length > 0) {
-    document.getElementById('interactionsSection').style.display = 'block';
-    let interactionsHTML = '';
-    shapData.interactions.forEach(interaction => {
-      interactionsHTML += `<tr>
-        <td>${interaction.feature}</td>
-        <td>${interaction.interaction_value.toFixed(6)}</td>
-      </tr>`;
-    });
-    document.querySelector("#interactionsTable tbody").innerHTML = interactionsHTML;
-  } else {
-    document.getElementById('interactionsSection').style.display = 'none';
-  }
-
-  // Display Interpretation
-  if (shapData.interpretation) {
-    document.getElementById('shap-interpretation').innerHTML = shapData.interpretation;
-  }
-}
-
-// Create SHAP Bar Chart
-function createShapBarChart(features) {
-  const ctx = document.getElementById('shapBarChart');
   
-  // Destroy previous chart if exists
-  if (shapBarChartInstance) {
-    shapBarChartInstance.destroy();
-  }
-
-  const labels = features.map(f => f.feature);
-  const values = features.map(f => f.shap_value);
-  const colors = values.map(v => v > 0 ? 'rgba(75, 192, 75, 0.7)' : 'rgba(255, 99, 99, 0.7)');
-
-  shapBarChartInstance = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'SHAP Value',
-        data: values,
-        backgroundColor: colors,
-        borderColor: colors.map(c => c.replace('0.7', '1')),
-        borderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      indexAxis: 'y',
-      plugins: {
-        legend: {
-          display: false
-        },
-        title: {
-          display: true,
-          text: 'Feature Contribution to Prediction',
-          color: '#d4af37',
-          font: {
-            size: 16
-          }
-        },
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              return `SHAP Value: ${context.parsed.x.toFixed(6)}`;
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          title: {
-            display: true,
-            text: 'SHAP Value',
-            color: '#d4af37'
-          },
-          grid: {
-            color: 'rgba(212, 175, 55, 0.1)'
-          },
-          ticks: {
-            color: '#ccc'
-          }
-        },
-        y: {
-          grid: {
-            color: 'rgba(212, 175, 55, 0.1)'
-          },
-          ticks: {
-            color: '#ccc',
-            font: {
-              size: 11
-            }
-          }
-        }
-      }
-    }
-  });
-}
-
-// Create Waterfall Chart
-function createWaterfallChart(shapData) {
-  const ctx = document.getElementById('waterfallChart');
-  
-  // Destroy previous chart if exists
-  if (waterfallChartInstance) {
-    waterfallChartInstance.destroy();
-  }
-
-  // Prepare waterfall data
-  const baseValue = shapData.base_value;
-  const features = shapData.top_features.slice(0, 8); // Top 8 features
-  
-  let cumulative = baseValue;
-  const labels = ['Base Value'];
-  const data = [baseValue];
-  const colors = ['rgba(100, 100, 100, 0.7)'];
-
-  features.forEach(f => {
-    labels.push(f.feature);
-    cumulative += f.shap_value;
-    data.push(cumulative);
-    colors.push(f.shap_value > 0 ? 'rgba(75, 192, 75, 0.7)' : 'rgba(255, 99, 99, 0.7)');
-  });
-
-  labels.push('Final');
-  data.push(shapData.prediction);
-  colors.push('rgba(212, 175, 55, 0.7)');
-
-  waterfallChartInstance = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'Cumulative Value',
-        data: data,
-        borderColor: '#d4af37',
-        backgroundColor: colors,
-        fill: false,
-        tension: 0.1,
-        pointRadius: 6,
-        pointBackgroundColor: colors,
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false
-        },
-        title: {
-          display: true,
-          text: 'How Features Build to Final Prediction',
-          color: '#d4af37',
-          font: {
-            size: 16
-          }
-        },
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              return `Value: ${context.parsed.y.toFixed(6)}`;
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          grid: {
-            color: 'rgba(212, 175, 55, 0.1)'
-          },
-          ticks: {
-            color: '#ccc',
-            maxRotation: 45,
-            minRotation: 45,
-            font: {
-              size: 10
-            }
-          }
-        },
-        y: {
-          title: {
-            display: true,
-            text: 'Prediction Value',
-            color: '#d4af37'
-          },
-          grid: {
-            color: 'rgba(212, 175, 55, 0.1)'
-          },
-          ticks: {
-            color: '#ccc'
-          }
-        }
-      }
-    }
-  });
-}
-
-// Load Global Importance
-async function loadGlobalImportance() {
-  try {
-    const res = await fetch("/shap/global-importance?top_n=20");
-    const data = await res.json();
-
-    if (data.global_importance) {
-      document.getElementById('global-importance-container').style.display = 'block';
-      createGlobalImportanceChart(data.global_importance);
-    }
-  } catch (error) {
-    console.error('Error loading global importance:', error);
-    alert('Failed to load global importance data.');
-  }
-}
-
-// Create Global Importance Chart
-function createGlobalImportanceChart(importanceData) {
-  const ctx = document.getElementById('globalImportanceChart');
-  
-  // Destroy previous chart if exists
-  if (globalImportanceChartInstance) {
-    globalImportanceChartInstance.destroy();
-  }
-
-  const labels = importanceData.map(d => d.feature);
-  const values = importanceData.map(d => d.importance);
-
-  globalImportanceChartInstance = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'Mean Absolute SHAP Value',
-        data: values,
-        backgroundColor: 'rgba(212, 175, 55, 0.7)',
-        borderColor: 'rgba(212, 175, 55, 1)',
-        borderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      indexAxis: 'y',
-      plugins: {
-        legend: {
-          display: false
-        },
-        title: {
-          display: true,
-          text: 'Top 20 Most Important Features (Global)',
-          color: '#d4af37',
-          font: {
-            size: 16
-          }
-        },
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              return `Importance: ${context.parsed.x.toFixed(6)}`;
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          title: {
-            display: true,
-            text: 'Mean Absolute SHAP Value',
-            color: '#d4af37'
-          },
-          grid: {
-            color: 'rgba(212, 175, 55, 0.1)'
-          },
-          ticks: {
-            color: '#ccc'
-          }
-        },
-        y: {
-          grid: {
-            color: 'rgba(212, 175, 55, 0.1)'
-          },
-          ticks: {
-            color: '#ccc',
-            font: {
-              size: 10
-            }
-          }
-        }
-      }
-    }
-  });
-}
-
-// Test server connection on page load
-window.addEventListener('DOMContentLoaded', async () => {
-  console.log('Page loaded. Testing server connection...');
+  // Show loading
+  showLoading();
+  hideError();
   
   try {
-    const testRes = await fetch('/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amino_acid: 'L', codon: 'UUA' })
+    // Make API call
+    const response = await fetch("/analyze", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        amino_acid: aa,
+        codon: codon,
+        host_species: host
+      })
     });
     
-    if (testRes.ok) {
-      console.log('✓ Server connection successful');
-    } else {
-      console.warn('⚠ Server returned:', testRes.status, testRes.statusText);
+    // Check if response is ok
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Server error occurred");
     }
-  } catch (err) {
-    console.error('✗ Cannot connect to server:', err.message);
-    console.error('Make sure Flask is running on http://localhost:5000 or update the fetch URL');
+    
+    const data = await response.json();
+    
+    // Hide loading and show results
+    hideLoading();
+    displayResults(data);
+    
+    // Update metrics page if model_metrics exists
+    if (data.model_metrics) {
+      updateMetricsPage(data.model_metrics);
+    }
+    
+  } catch (error) {
+    console.error("Analysis error:", error);
+    showError(error.message || "Failed to analyze. Please check your inputs and try again.");
   }
+}
+
+// ============= DISPLAY RESULTS =============
+
+function displayResults(data) {
+  // Show results container
+  document.getElementById("home-results").style.display = "block";
+  
+  // 1. Codon Ranking Table
+  displayCodonRanking(data.codon_ranking, data.selected_rank);
+  
+  // 2. Top Species
+  displayTopSpecies(data.top_species);
+  
+  // 3. Species Preferences
+  if (data.species_specific_analysis) {
+    displaySpeciesPreferences(data.species_specific_analysis);
+  }
+  
+  // 4. Host Optimization
+  if (data.host_aware_optimization) {
+    displayHostOptimization(data.host_aware_optimization);
+  }
+  
+  // 5. Codon Bias
+  if (data.codon_bias_score) {
+    displayCodonBias(data.codon_bias_score);
+  }
+  
+  // 6. Kingdom Comparison
+  if (data.cross_kingdom_comparison) {
+    displayKingdomComparison(data.cross_kingdom_comparison);
+  }
+  
+  // 7. SHAP Explanation
+  if (data.shap_explanation) {
+    displayShapExplanation(data.shap_explanation);
+  }
+}
+
+// ============= INDIVIDUAL DISPLAY FUNCTIONS =============
+
+function displayCodonRanking(ranking, selectedRank) {
+  const tbody = document.querySelector("#rankingTable tbody");
+  tbody.innerHTML = "";
+  
+  if (!ranking || ranking.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4">No data available</td></tr>';
+    return;
+  }
+  
+  ranking.forEach(row => {
+    const tr = document.createElement("tr");
+    
+    // Highlight if: (1) this is rank 1, OR (2) this is the selected codon
+    const shouldHighlight = row.rank === 1 || (selectedRank && row.rank === selectedRank);
+    if (shouldHighlight) {
+      tr.classList.add("highlight");
+    }
+    
+    tr.innerHTML = `
+      <td>${row.rank}</td>
+      <td><strong>${row.codon}</strong></td>
+      <td>${row.frequency.toFixed(4)}</td>
+      <td>${row.ml_weight.toFixed(4)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function displayTopSpecies(species) {
+  const ul = document.getElementById("species");
+  ul.innerHTML = "";
+  
+  if (!species || species.length === 0) {
+    ul.innerHTML = '<li>No species data available</li>';
+    return;
+  }
+  
+  species.forEach((s, index) => {
+    const li = document.createElement("li");
+    
+    // Add special class for top species
+    if (index === 0) {
+      li.classList.add("top-species");
+    }
+    
+    li.textContent = `${s.SPECIESNAME || s.species} (Score: ${(s.SCORE || s.usage).toFixed(4)})`;
+    ul.appendChild(li);
+  });
+}
+
+function displaySpeciesPreferences(analysis) {
+  if (!analysis) return;
+  
+  // High preference species
+  const highList = document.getElementById("speciesHigh");
+  highList.innerHTML = "";
+  
+  if (analysis.top_species && analysis.top_species.length > 0) {
+    analysis.top_species.forEach(s => {
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <span>${s.SPECIESNAME}</span>
+        <span class="badge">${s.PREFERENCE_SCORE.toFixed(3)}</span>
+      `;
+      highList.appendChild(li);
+    });
+  } else {
+    highList.innerHTML = '<li>No data available</li>';
+  }
+  
+  // Low preference species
+  const lowList = document.getElementById("speciesLow");
+  lowList.innerHTML = "";
+  
+  if (analysis.bottom_species && analysis.bottom_species.length > 0) {
+    analysis.bottom_species.forEach(s => {
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <span>${s.SPECIESNAME}</span>
+        <span class="badge">${s.PREFERENCE_SCORE.toFixed(3)}</span>
+      `;
+      lowList.appendChild(li);
+    });
+  } else {
+    lowList.innerHTML = '<li>No data available</li>';
+  }
+  
+  // Explanation
+  const explain = document.getElementById("speciesExplain");
+  explain.textContent = analysis.explanation || "Species with high preference frequently use this codon, while low preference species rarely use it.";
+}
+
+function displayHostOptimization(optimization) {
+  const hostResult = document.getElementById("hostResult");
+  const container = document.getElementById("hostRankingContainer");
+  const tbody = document.querySelector("#hostRankingTable tbody");
+  
+  if (!optimization) {
+    hostResult.innerHTML = `
+      <p style="color:#888;">💡 <strong>Enter a host species name</strong> above to see optimized codon usage.</p>
+    `;
+    container.style.display = "none";
+    return;
+  }
+  
+  // Check if data was found
+  if (!optimization.found) {
+    hostResult.innerHTML = `
+      <div style="padding:15px;background:rgba(255,165,0,0.1);border-left:4px solid #FFA500;border-radius:5px;">
+        <strong style="color:#FFA500;">ℹ️ ${optimization.message || 'No host specified'}</strong><br>
+        <em style="color:#ccc;font-size:13px;">Examples: "Escherichia coli", "E. coli", "coli", "Human", "Yeast", "Bacillus subtilis"</em>
+      </div>
+    `;
+    container.style.display = "none";
+    return;
+  }
+  
+  // Data found - show results
+  hostResult.innerHTML = `
+    <div style="padding:15px;background:rgba(76,175,80,0.1);border-left:4px solid #4CAF50;border-radius:5px;">
+      <strong style="color:#4CAF50;">✓ Host Species Found:</strong> ${optimization.host_species}<br>
+      <strong style="color:#d4af37;">🎯 Optimal Codon:</strong> <span style="color:#4CAF50;font-size:20px;font-weight:bold;">${optimization.optimal_codon}</span><br>
+      <em style="color:#ccc;font-size:13px;">This is the most frequently used codon for this amino acid in ${optimization.host_species}</em>
+    </div>
+  `;
+  
+  if (optimization.codon_ranking && optimization.codon_ranking.length > 0) {
+    container.style.display = "block";
+    tbody.innerHTML = "";
+    
+    optimization.codon_ranking.forEach((item, index) => {
+      const tr = document.createElement("tr");
+      
+      // Highlight rank 1
+      if (index === 0) {
+        tr.classList.add("highlight");
+      }
+      
+      tr.innerHTML = `
+        <td>${index + 1}</td>
+        <td><strong>${item[0]}</strong></td>
+        <td>${item[1].toFixed(4)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } else {
+    container.style.display = "none";
+  }
+}
+
+function displayCodonBias(biasData) {
+  const biasResult = document.getElementById("biasResult");
+  const container = document.getElementById("biasTableContainer");
+  const tbody = document.querySelector("#biasTable tbody");
+  
+  if (!biasData) {
+    biasResult.innerHTML = `
+      <p style="color:#888;">💡 <strong>Enter a specific codon</strong> above to see bias analysis.</p>
+    `;
+    container.style.display = "none";
+    return;
+  }
+  
+  // Check if data was found
+  if (!biasData.found) {
+    biasResult.innerHTML = `
+      <div style="padding:15px;background:rgba(255,165,0,0.1);border-left:4px solid #FFA500;border-radius:5px;">
+        <strong style="color:#FFA500;">ℹ️ ${biasData.message || 'No codon specified'}</strong><br>
+        <em style="color:#ccc;font-size:13px;">Enter a codon in RNA format (e.g., UUA, GCC, UAA) in the "Codon" field above</em>
+      </div>
+    `;
+    container.style.display = "none";
+    return;
+  }
+  
+  // Data found - show results
+  biasResult.innerHTML = `
+    <div style="padding:15px;background:rgba(76,175,80,0.1);border-left:4px solid #4CAF50;border-radius:5px;">
+      <strong style="color:#4CAF50;">✓ Analyzing Codon:</strong> <span style="font-size:18px;font-weight:bold;color:#d4af37;">${biasData.codon}</span><br>
+      <strong>Global Average Usage:</strong> ${biasData.global_average.toFixed(4)}<br>
+      <em style="color:#ccc;font-size:13px;">Bias score = (Species usage) / (Global average). Higher values indicate stronger preference.</em>
+    </div>
+  `;
+  
+  if (biasData.top_bias_species && biasData.top_bias_species.length > 0) {
+    container.style.display = "block";
+    tbody.innerHTML = "";
+    
+    biasData.top_bias_species.forEach((s, index) => {
+      const tr = document.createElement("tr");
+      
+      // Highlight top species
+      if (index === 0) {
+        tr.classList.add("highlight");
+      }
+      
+      tr.innerHTML = `
+        <td>${s.SPECIESNAME}</td>
+        <td><strong>${s.bias.toFixed(2)}x</strong></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } else {
+    container.style.display = "none";
+  }
+}
+
+function displayKingdomComparison(kingdoms) {
+  const tbody = document.querySelector("#kingdomTable tbody");
+  tbody.innerHTML = "";
+  
+  if (!kingdoms || kingdoms.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="2">No kingdom data available</td></tr>';
+    return;
+  }
+  
+  // Sort by usage descending
+  kingdoms.sort((a, b) => {
+    const aVal = a[Object.keys(a)[1]] || 0;
+    const bVal = b[Object.keys(b)[1]] || 0;
+    return bVal - aVal;
+  });
+  
+  kingdoms.forEach((k, index) => {
+    const tr = document.createElement("tr");
+    
+    // Highlight highest usage kingdom
+    if (index === 0) {
+      tr.classList.add("highlight");
+    }
+    
+    const kingdomName = k.KINGDOM || k.kingdom;
+    const usage = k[Object.keys(k)[1]];
+    
+    tr.innerHTML = `
+      <td>${kingdomName}</td>
+      <td>${usage.toFixed(4)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function displayShapExplanation(shap) {
+  const chartDiv = document.getElementById("shapChart");
+  const tbody = document.querySelector("#shapTable tbody");
+  
+  if (!chartDiv || !tbody) return;
+  
+  chartDiv.innerHTML = "";
+  tbody.innerHTML = "";
+  
+  if (!shap || shap.length === 0) {
+    chartDiv.innerHTML = '<p style="text-align:center;color:#888;">No SHAP data available</p>';
+    tbody.innerHTML = '<tr><td colspan="3">No data available</td></tr>';
+    return;
+  }
+  
+  // Sort by absolute impact (highest influence first)
+  const sortedShap = [...shap].sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact));
+  
+  // Create bar chart
+  sortedShap.forEach((item, index) => {
+    const barContainer = document.createElement("div");
+    barContainer.style.margin = "12px 0";
+    barContainer.style.display = "flex";
+    barContainer.style.alignItems = "center";
+    barContainer.style.gap = "12px";
+    
+    const label = document.createElement("strong");
+    label.textContent = item.feature || item.codon || item.name || "Unknown";
+    label.style.minWidth = "60px";
+    label.style.color = "#d4af37";
+    label.style.fontSize = "16px";
+    
+    const barWrapper = document.createElement("div");
+    barWrapper.style.flex = "1";
+    barWrapper.style.height = "30px";
+    barWrapper.style.background = "#1a1a1a";
+    barWrapper.style.position = "relative";
+    barWrapper.style.borderRadius = "5px";
+    barWrapper.style.overflow = "hidden";
+    barWrapper.style.border = "1px solid #333";
+    
+    const impact = item.impact || item.value || 0;
+    const absImpact = Math.abs(impact);
+    const maxImpact = Math.max(...sortedShap.map(s => Math.abs(s.impact || s.value || 0)));
+    const barWidth = maxImpact > 0 ? (absImpact / maxImpact * 100) : 0;
+    
+    const bar = document.createElement("div");
+    bar.style.width = barWidth + "%";
+    bar.style.height = "100%";
+    bar.style.background = impact > 0 ? 
+      "linear-gradient(90deg, #4CAF50, #66BB6A)" : 
+      "linear-gradient(90deg, #FF5252, #FF7961)";
+    bar.style.transition = "width 0.5s ease";
+    bar.style.boxShadow = impact > 0 ? 
+      "0 0 10px rgba(76, 175, 80, 0.5)" : 
+      "0 0 10px rgba(255, 82, 82, 0.5)";
+    
+    const value = document.createElement("span");
+    value.textContent = `${impact > 0 ? '+' : ''}${impact.toFixed(4)}`;
+    value.style.marginLeft = "10px";
+    value.style.color = impact > 0 ? "#4CAF50" : "#FF5252";
+    value.style.fontWeight = "bold";
+    value.style.minWidth = "90px";
+    value.style.fontSize = "14px";
+    
+    barWrapper.appendChild(bar);
+    barContainer.appendChild(label);
+    barContainer.appendChild(barWrapper);
+    barContainer.appendChild(value);
+    chartDiv.appendChild(barContainer);
+    
+    // Add to table with interpretation
+    const tr = document.createElement("tr");
+    
+    // Highlight top influence
+    if (index === 0) {
+      tr.classList.add("highlight");
+    }
+    
+    let interpretation = "";
+    if (impact > 0) {
+      if (absImpact > 0.02) {
+        interpretation = "Strongly recommended";
+      } else if (absImpact > 0.01) {
+        interpretation = "Moderately recommended";
+      } else {
+        interpretation = "Slightly favored";
+      }
+    } else {
+      if (absImpact > 0.02) {
+        interpretation = "Strongly discouraged";
+      } else if (absImpact > 0.01) {
+        interpretation = "Moderately discouraged";
+      } else {
+        interpretation = "Slightly disfavored";
+      }
+    }
+    
+    tr.innerHTML = `
+      <td><strong>${item.feature || item.codon || "Unknown"}</strong></td>
+      <td style="color: ${impact > 0 ? '#4CAF50' : '#FF5252'}; font-weight: bold;">
+        ${impact > 0 ? '+' : ''}${impact.toFixed(4)}
+      </td>
+      <td style="color: #ccc;">${interpretation}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ============= UPDATE METRICS PAGE =============
+
+function updateMetricsPage(metrics) {
+  if (!metrics) return;
+  
+  console.log("Updating metrics with:", metrics);
+  
+  // Accuracy Comparison
+  const accCodon = document.getElementById("accCodon");
+  const accBWT = document.getElementById("accBWT");
+  
+  if (accCodon && metrics.accuracy_codon_only !== undefined) {
+    accCodon.textContent = (metrics.accuracy_codon_only * 100).toFixed(2) + "%";
+  }
+  if (accBWT && (metrics.accuracy_codon_bwt !== undefined || metrics.accuracy_codon_BWT !== undefined)) {
+    const val = metrics.accuracy_codon_bwt || metrics.accuracy_codon_BWT;
+    accBWT.textContent = (val * 100).toFixed(2) + "%";
+  }
+  
+  // Model Evaluation Metrics - handle both naming conventions
+  const metricsTableBody = document.querySelector("#metricsTable tbody");
+  if (metricsTableBody) {
+    const rows = metricsTableBody.querySelectorAll("tr");
+    
+    // Support both top1_accuracy and accuracy_top1 naming
+    const top1 = metrics.top1_accuracy || metrics.accuracy_top1;
+    const top2 = metrics.top2_accuracy || metrics.accuracy_top2;
+    const top3 = metrics.top3_accuracy || metrics.accuracy_top3;
+    
+    const metricsMap = {
+      0: top1 !== undefined ? (top1 * 100).toFixed(2) + "%" : "–",
+      1: top2 !== undefined ? (top2 * 100).toFixed(2) + "%" : "–",
+      2: top3 !== undefined ? (top3 * 100).toFixed(2) + "%" : "–",
+      3: metrics.precision !== undefined ? (metrics.precision * 100).toFixed(2) + "%" : "–",
+      4: metrics.recall !== undefined ? (metrics.recall * 100).toFixed(2) + "%" : "–",
+      5: metrics.f1_score !== undefined ? metrics.f1_score.toFixed(4) : "–",
+      6: metrics.loss !== undefined ? metrics.loss.toFixed(4) : "–",
+      7: top1 !== undefined ? ((1 - top1) * 100).toFixed(2) + "%" : "–"
+    };
+    
+    rows.forEach((row, index) => {
+      const cells = row.querySelectorAll("td");
+      if (cells.length > 1 && metricsMap[index] !== undefined) {
+        cells[1].textContent = metricsMap[index];
+      }
+    });
+  }
+  
+  // Robustness Evaluation
+  const accClean = document.getElementById("accClean");
+  const accNoisy = document.getElementById("accNoisy");
+  const accMissing = document.getElementById("accMissing");
+  
+  if (accClean && metrics.accuracy_clean !== undefined) {
+    accClean.textContent = (metrics.accuracy_clean * 100).toFixed(2) + "%";
+  }
+  if (accNoisy && metrics.accuracy_noisy !== undefined) {
+    accNoisy.textContent = (metrics.accuracy_noisy * 100).toFixed(2) + "%";
+  }
+  if (accMissing && metrics.accuracy_missing !== undefined) {
+    accMissing.textContent = (metrics.accuracy_missing * 100).toFixed(2) + "%";
+  }
+}
+
+// ============= KEYBOARD SUPPORT =============
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Allow Enter key to trigger analysis
+  const inputs = ['aa', 'codon', 'host'];
+  inputs.forEach(id => {
+    const input = document.getElementById(id);
+    if (input) {
+      input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          analyze();
+        }
+      });
+    }
+  });
 });
+
+// ============= NETWORK BACKGROUND =============
+
+const canvas = document.getElementById('network-bg');
+if (canvas) {
+  const ctx = canvas.getContext('2d');
+
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  window.addEventListener('resize', function() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+
+  // Simple particle animation
+  const particles = [];
+  const particleCount = 50;
+
+  for (let i = 0; i < particleCount; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.5,
+      vy: (Math.random() - 0.5) * 0.5,
+      radius: Math.random() * 2 + 1
+    });
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      
+      if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+      if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+      
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(212, 175, 55, 0.5)';
+      ctx.fill();
+    });
+    
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+}

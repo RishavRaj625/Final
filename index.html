@@ -4,68 +4,91 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Codon Usage Tool with Explainable AI</title>
+  <title>Codon Usage Tool</title>
   <link rel="stylesheet" href="/static/style.css">
-  <!-- Add Chart.js for visualizations -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+  
 </head>
 
 <body>
 
-  <!-- Network Background -->
   <canvas id="network-bg"></canvas>
-
-  <!-- Image Overlay -->
   <div class="overlay" id="overlay"></div>
-  
-  <!-- Image Title -->
   <div class="image-title" id="imageTitle"></div>
 
-  <!-- Header -->
   <div class="header">
-    <div class="logo">🧬</div>
+    <div class="logo">Codon Usage Tool</div>
     <div class="nav-icons">
       <div class="nav-icon active" onclick="showPage('home')" title="Home">🏠</div>
-      <div class="nav-icon" onclick="showPage('shap')" title="SHAP Explanations">🔍</div>
       <div class="nav-icon" onclick="showPage('metrics')" title="Metrics">📊</div>
       <div class="nav-icon" onclick="showPage('proof')" title="Training Proof">📈</div>
     </div>
   </div>
 
-  <!-- Main Container -->
   <div class="container">
 
-    <!-- Page 1: Home - Hybrid Codon Recommendation System -->
+    <!-- HOME PAGE -->
     <div id="home" class="page active">
       <div class="page-title">Codon Usage Tool</div>
-      <div class="page-subtitle">[Optimize & Analyze]</div>
+      <div class="page-subtitle">[Default Optimize Page]</div>
 
       <div class="form-group">
         <label>Amino Acid (Single Letter):</label>
-        <input id="aa" placeholder="Example: L, K, F">
+        <input id="aa" placeholder="Example: L, K, F" type="text">
       </div>
 
       <div class="form-group">
-        <label>Codon (RNA format, optional):</label>
-        <input id="codon" placeholder="Example: UUA, UUU">
+        <label>Codon (RNA format, optional - for bias analysis):</label>
+        <input id="codon" list="codonSuggestions" placeholder="e.g., UUA, GCC, UAA" type="text">
+        <datalist id="codonSuggestions">
+          <option value="UUA">
+          <option value="UUG">
+          <option value="CUU">
+          <option value="CUC">
+          <option value="CUA">
+          <option value="CUG">
+          <option value="GCC">
+          <option value="GCU">
+          <option value="GCA">
+          <option value="GCG">
+          <option value="UAA">
+          <option value="UAG">
+          <option value="UGA">
+        </datalist>
       </div>
 
       <div class="form-group">
         <label>Target Host Species (optional):</label>
-        <input id="host" placeholder="Example: Escherichia coli">
+        <input id="host" list="hostSuggestions" placeholder="e.g., E. coli, coli, Human, Yeast, Bacillus" type="text">
+        <datalist id="hostSuggestions">
+          <option value="Escherichia coli">
+          <option value="E. coli">
+          <option value="coli">
+          <option value="Bacillus subtilis">
+          <option value="Saccharomyces cerevisiae">
+          <option value="Yeast">
+          <option value="Homo sapiens">
+          <option value="Human">
+          <option value="Mus musculus">
+          <option value="Mouse">
+          <option value="Arabidopsis thaliana">
+          <option value="Drosophila melanogaster">
+          <option value="Pseudomonas aeruginosa">
+          <option value="Staphylococcus aureus">
+          <option value="Mycobacterium tuberculosis">
+        </datalist>
       </div>
 
       <button onclick="analyze()">Analyze</button>
 
-      <div id="loading" style="display: none; text-align: center; margin-top: 20px; color: #d4af37;">
-        <p>🔄 Analyzing... Please wait</p>
+      <div id="loading" style="display:none;">
+        <p>🔬 Analyzing codon usage...</p>
       </div>
 
-      <div id="error-message" style="display: none; text-align: center; margin-top: 20px; padding: 15px; background: rgba(255, 0, 0, 0.1); border: 1px solid #ff0000; border-radius: 10px; color: #ff6b6b;">
-      </div>
+      <div id="error-message" style="display:none;"></div>
 
-      <div id="home-results" style="display: none;">
+      <div id="home-results" style="display:none;">
 
+        <!-- CODON RANKING -->
         <div class="result-section">
           <h3>Codon Ranking</h3>
           <table id="rankingTable">
@@ -81,12 +104,13 @@
           </table>
         </div>
 
+        <!-- TOP SPECIES -->
         <div class="result-section">
           <h3 class="species-highlight">Top Species (Usage Based)</h3>
           <ul id="species"></ul>
         </div>
 
-        <!-- Species Specific Preference -->
+        <!-- SPECIES PREFERENCE -->
         <div class="result-section">
           <h3>Species-Specific Codon Preference</h3>
           <div class="flex-container">
@@ -102,11 +126,11 @@
           <div class="info-box" id="speciesExplain"></div>
         </div>
 
-        <!-- Host-Aware Optimization -->
+        <!-- HOST OPTIMIZATION -->
         <div class="result-section">
           <h3>Host-Aware Codon Optimization</h3>
           <div class="info-box" id="hostResult"></div>
-          <div id="hostRankingContainer" style="display: none; margin-top: 15px;">
+          <div id="hostRankingContainer" style="display:none;margin-top:15px;">
             <h4 class="subsection-title">Host-Specific Codon Ranking</h4>
             <table id="hostRankingTable">
               <thead>
@@ -121,128 +145,70 @@
           </div>
         </div>
 
-      </div>
-    </div>
-
-    <!-- Page 2: SHAP Explanations -->
-    <div id="shap" class="page">
-      <div class="page-title">🔍 Explainable AI - SHAP Analysis</div>
-      <div class="page-subtitle">Understanding Model Predictions</div>
-
-      <!-- SHAP Explanation Section -->
-      <div id="shap-results" style="display: none;">
-        
-        <!-- Quick Summary -->
+        <!-- CODON BIAS -->
         <div class="result-section">
-          <h3>📋 Explanation Summary</h3>
-          <div id="shap-summary" class="info-box"></div>
-        </div>
-
-        <!-- Feature Importance Chart -->
-        <div class="result-section">
-          <h3>📊 Feature Contributions</h3>
-          <div style="max-width: 100%; overflow-x: auto;">
-            <canvas id="shapBarChart" style="max-height: 400px;"></canvas>
-          </div>
-          <div class="info-box" style="margin-top: 15px;">
-            <strong>Interpretation:</strong> This chart shows which codons/features have the strongest influence on the model's prediction. 
-            Positive values (green) push the prediction higher, while negative values (red) push it lower.
+          <h3>Codon Bias Score</h3>
+          <div class="info-box" id="biasResult"></div>
+          <div id="biasTableContainer" style="display:none;margin-top:15px;">
+            <table id="biasTable">
+              <thead>
+                <tr>
+                  <th>Species</th>
+                  <th>Bias Score</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
           </div>
         </div>
 
-        <!-- Top Features Table -->
+        <!-- KINGDOM COMPARISON -->
         <div class="result-section">
-          <h3>🎯 Top Contributing Features</h3>
-          <table id="shapFeaturesTable">
+          <h3>Cross-Kingdom Codon Comparison</h3>
+          <table id="kingdomTable">
             <thead>
               <tr>
-                <th>Rank</th>
-                <th>Feature</th>
-                <th>SHAP Value</th>
-                <th>Effect</th>
-                <th>% Contribution</th>
+                <th>Kingdom</th>
+                <th>Average Usage</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div class="info-box" style="margin-top:15px;">
+            <strong>Note:</strong> This comparison shows how codon usage varies across different kingdoms of life, revealing evolutionary preferences.
+          </div>
+        </div>
+
+        <!-- SHAP SECTION -->
+        <div class="result-section">
+          <h3>AI Model Explanation (SHAP)</h3>
+          <div class="info-box">
+            <strong>What are SHAP values?</strong><br>
+            SHAP (SHapley Additive exPlanations) values show how much each codon influences the AI model's prediction.<br><br>
+            
+            <strong style="color:#4CAF50;">✓ Positive values (Green):</strong> This codon increases the model's confidence that it should be used for this amino acid. Higher positive values mean the model strongly recommends this codon.<br><br>
+            
+            <strong style="color:#FF5252;">✗ Negative values (Red):</strong> This codon decreases the model's confidence. The model suggests avoiding this codon for optimal expression.<br><br>
+            
+            <strong>Value magnitude:</strong> The size of the value (ignoring +/-) indicates strength of influence. Larger absolute values = stronger influence on the prediction.
+          </div>
+          <div id="shapChart"></div>
+          <table id="shapTable" style="margin-top:15px;">
+            <thead>
+              <tr>
+                <th>Codon Feature</th>
+                <th>SHAP Impact</th>
+                <th>Interpretation</th>
               </tr>
             </thead>
             <tbody></tbody>
           </table>
         </div>
 
-        <!-- Waterfall Visualization -->
-        <div class="result-section">
-          <h3>💧 Waterfall Plot - Cumulative Effects</h3>
-          <div style="max-width: 100%; overflow-x: auto;">
-            <canvas id="waterfallChart" style="max-height: 400px;"></canvas>
-          </div>
-          <div class="info-box" style="margin-top: 15px;">
-            <strong>How to read:</strong> Starting from the base value (average prediction), each bar shows how a feature 
-            pushes the prediction up or down, leading to the final prediction value.
-          </div>
-        </div>
-
-        <!-- Feature Interactions -->
-        <div class="result-section" id="interactionsSection" style="display: none;">
-          <h3>🔗 Feature Interactions</h3>
-          <table id="interactionsTable">
-            <thead>
-              <tr>
-                <th>Interacting Feature</th>
-                <th>Interaction Strength</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-          <div class="info-box" style="margin-top: 15px;">
-            <strong>Interaction Effects:</strong> These features work together with the selected codon. 
-            High interaction values indicate synergistic or antagonistic relationships between features.
-          </div>
-        </div>
-
-        <!-- Interpretation -->
-        <div class="result-section">
-          <h3>💡 AI Interpretation</h3>
-          <div id="shap-interpretation" class="info-box" style="background: rgba(212, 175, 55, 0.1); border-left: 4px solid #d4af37;">
-          </div>
-        </div>
-
       </div>
-
-      <!-- No SHAP Data Message -->
-      <div id="no-shap-data" class="result-section">
-        <div class="info-box" style="text-align: center; padding: 30px;">
-          <h3 style="color: #d4af37; margin-bottom: 15px;">ℹ️ No SHAP Explanation Available</h3>
-          <p style="margin-bottom: 10px;">To see SHAP explanations, please:</p>
-          <ol style="text-align: left; display: inline-block; margin: 0 auto;">
-            <li>Go to the <strong>Home</strong> tab</li>
-            <li>Enter an amino acid (e.g., "L")</li>
-            <li>Enter a codon (e.g., "UUA")</li>
-            <li>Click <strong>Analyze</strong></li>
-            <li>Return to this tab to view SHAP explanations</li>
-          </ol>
-          <p style="margin-top: 15px; color: #888;">
-            SHAP values explain which features contribute most to the model's predictions.
-          </p>
-        </div>
-      </div>
-
-      <!-- Global Feature Importance -->
-      <div class="result-section">
-        <h3>🌍 Global Feature Importance</h3>
-        <button onclick="loadGlobalImportance()" style="width: auto; padding: 10px 20px; margin-bottom: 15px;">
-          Load Global Importance
-        </button>
-        <div id="global-importance-container" style="display: none;">
-          <div style="max-width: 100%; overflow-x: auto;">
-            <canvas id="globalImportanceChart" style="max-height: 500px;"></canvas>
-          </div>
-          <div class="info-box" style="margin-top: 15px;">
-            <strong>Global Importance:</strong> These are the most influential features across all species in the dataset.
-          </div>
-        </div>
-      </div>
-
     </div>
 
-    <!-- Page 3: Metrics -->
+    <!-- METRICS PAGE -->
     <div id="metrics" class="page">
       <div class="page-title">Model Performance Metrics</div>
       <div class="page-subtitle">Accuracy Comparison & Evaluation</div>
@@ -259,11 +225,11 @@
           <tbody>
             <tr>
               <td>Codon Only</td>
-              <td id="accCodon">—</td>
+              <td id="accCodon">–</td>
             </tr>
             <tr>
               <td>Codon + BWT</td>
-              <td id="accBWT">—</td>
+              <td id="accBWT">–</td>
             </tr>
           </tbody>
         </table>
@@ -281,35 +247,35 @@
           <tbody>
             <tr>
               <td>Top-1 Accuracy</td>
-              <td>—</td>
+              <td>–</td>
             </tr>
             <tr>
               <td>Top-2 Accuracy</td>
-              <td>—</td>
+              <td>–</td>
             </tr>
             <tr>
               <td>Top-3 Accuracy</td>
-              <td>—</td>
+              <td>–</td>
             </tr>
             <tr>
               <td>Precision</td>
-              <td>—</td>
+              <td>–</td>
             </tr>
             <tr>
               <td>Recall</td>
-              <td>—</td>
+              <td>–</td>
             </tr>
             <tr>
               <td>F1 Score</td>
-              <td>—</td>
+              <td>–</td>
             </tr>
             <tr>
               <td>Loss</td>
-              <td>—</td>
+              <td>–</td>
             </tr>
             <tr>
               <td>Error</td>
-              <td>—</td>
+              <td>–</td>
             </tr>
           </tbody>
         </table>
@@ -334,22 +300,22 @@
           <tbody>
             <tr>
               <td>Clean</td>
-              <td id="accClean">—</td>
+              <td id="accClean">–</td>
             </tr>
             <tr>
               <td>Noisy</td>
-              <td id="accNoisy">—</td>
+              <td id="accNoisy">–</td>
             </tr>
             <tr>
               <td>Missing</td>
-              <td id="accMissing">—</td>
+              <td id="accMissing">–</td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- Page 4: Training Proof -->
+    <!-- PROOF PAGE -->
     <div id="proof" class="page">
       <div class="page-title">Training & Evaluation Proof</div>
       <div class="page-subtitle">Model Training Visualizations</div>
@@ -373,7 +339,6 @@
   </div>
 
   <script src="/static/script.js"></script>
-
+  
 </body>
-
 </html>
